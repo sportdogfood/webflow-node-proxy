@@ -1,6 +1,15 @@
 const express = require('express');
 const fetch = require('node-fetch');
+const cors = require('cors');  // Import CORS middleware
+
 const app = express();
+
+// Use CORS middleware with specific origin
+app.use(cors({
+  origin: 'https://www.sportdogfood.com',  // Replace this with the domain you want to allow
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Middleware to parse JSON bodies
 app.use(express.json());
