@@ -36,7 +36,7 @@ app.post('/webflow', async (req, res) => {
 
     try {
         // Send POST request to Webflow API
-        const response = await fetch('https://api.webflow.com/v2/collections/647ddb9037101ce399b331bb/items', {
+        const response = await fetch('https://api.webflow.com/v2/collections/6494e10f7a143f705f4db1d2/items', {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(body)
