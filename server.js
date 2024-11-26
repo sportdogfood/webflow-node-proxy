@@ -1,6 +1,8 @@
+// server.js
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors'); // Import CORS middleware
+require('dotenv').config(); // Load environment variables
 const app = express();
 
 // Use CORS middleware with specific origin
@@ -14,14 +16,16 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Webflow API key from environment variables
+const WEBFLOW_API_KEY = process.env.WEBFLOW_API_KEY;
+
 // Webflow API endpoint on Heroku
 app.post('/webflow', async (req, res) => {
   const { fieldData } = req.body;
 
   const headers = {
     'accept': 'application/json',
-    //'authorization': 'Bearer 8c21ecbc5b6e67c61d84ca6f3798ecf88e2cb453f8fc0312945b29d45f1d873e',
-    'authorization': 'Bearer fc1966f1588bc96d62d63b7bc6f22efdb84054cf49faf1ade02a744b7581b0af',
+    'authorization': `Bearer ${WEBFLOW_API_KEY}`,
     'content-type': 'application/json'
   };
 
@@ -30,6 +34,7 @@ app.post('/webflow', async (req, res) => {
     isDraft: false,
     fieldData: {
       name: fieldData.name
+      // Add other fields as needed
     }
   };
 
@@ -40,6 +45,12 @@ app.post('/webflow', async (req, res) => {
       body: JSON.stringify(body)
     });
 
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Webflow API Error:', errorData);
+      return res.status(response.status).json({ error: 'Error sending data to Webflow API', details: errorData });
+    }
+
     const data = await response.json();
     console.log('Webflow API Response:', data);
     res.json(data);
@@ -49,14 +60,29 @@ app.post('/webflow', async (req, res) => {
   }
 });
 
-// New test_auth route
+// Updated test_auth route to verify Webflow API key
 app.post('/test_auth', async (req, res) => {
-  const { token } = req.body;
+  try {
+    // Example: Fetch collections to verify API key
+    const response = await fetch('https://api.webflow.com/collections', {
+      method: 'GET',
+      headers: {
+        'accept': 'application/json',
+        'authorization': `Bearer ${WEBFLOW_API_KEY}`,
+        'content-type': 'application/json'
+      }
+    });
 
-  if (token === 'test_token') {
-    res.json({ success: true, message: 'Authorization successful!' });
-  } else {
-    res.status(401).json({ success: false, message: 'Authorization failed. Invalid token.' });
+    if (response.ok) {
+      const data = await response.json();
+      res.json({ success: true, message: 'Authorization successful!', data: data });
+    } else {
+      const errorData = await response.json();
+      res.status(response.status).json({ success: false, message: 'Authorization failed.', details: errorData });
+    }
+  } catch (error) {
+    console.error('Error during authentication test:', error);
+    res.status(500).json({ success: false, message: 'Error during authentication test.', details: error.message });
   }
 });
 
@@ -70,5 +96,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-
