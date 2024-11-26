@@ -62,8 +62,19 @@ const makeWebflowRequest = async (method, endpoint, data = null) => {
   }
 };
 
-// Route: Test Authentication
+// Route: Test Authentication (POST)
 app.post('/test_auth', async (req, res) => {
+  try {
+    const data = await makeWebflowRequest('GET', `/sites/${SITE_ID}`);
+    res.json({ success: true, message: 'Authorization successful!', data });
+  } catch (error) {
+    console.error('Authorization Error:', error);
+    res.status(error.status || 500).json({ success: false, message: 'Authorization failed.', details: error.data });
+  }
+});
+
+// Route: Test Authentication (GET) - Optional
+app.get('/test_auth', async (req, res) => {
   try {
     const data = await makeWebflowRequest('GET', `/sites/${SITE_ID}`);
     res.json({ success: true, message: 'Authorization successful!', data });
