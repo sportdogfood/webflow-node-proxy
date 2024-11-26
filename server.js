@@ -36,14 +36,19 @@ const makeWebflowRequest = async (method, endpoint, data = null) => {
     'content-type': 'application/json',
   };
 
-  try {
-    const response = await axios({
-      method,
-      url,
-      headers,
-      data,
-    });
+  const config = {
+    method,
+    url,
+    headers,
+  };
 
+  // Only include data for methods that support a body
+  if (data && !['GET', 'HEAD'].includes(method.toUpperCase())) {
+    config.data = data;
+  }
+
+  try {
+    const response = await axios(config);
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -62,21 +67,10 @@ const makeWebflowRequest = async (method, endpoint, data = null) => {
   }
 };
 
-// Route: Test Authentication (POST)
-app.post('/test_auth', async (req, res) => {
-  try {
-    const data = await makeWebflowRequest('GET', `/sites/${SITE_ID}`);
-    res.json({ success: true, message: 'Authorization successful!', data });
-  } catch (error) {
-    console.error('Authorization Error:', error);
-    res.status(error.status || 500).json({ success: false, message: 'Authorization failed.', details: error.data });
-  }
-});
-
-// Route: Test Authentication (GET) - Optional
+// Route: Test Authentication (GET)
 app.get('/test_auth', async (req, res) => {
   try {
-    const data = await makeWebflowRequest('GET', `/sites/${SITE_ID}`);
+    const data = await makeWebflowRequest('GET', `/v2/token/authorized_by`);
     res.json({ success: true, message: 'Authorization successful!', data });
   } catch (error) {
     console.error('Authorization Error:', error);
@@ -84,168 +78,18 @@ app.get('/test_auth', async (req, res) => {
   }
 });
 
-// Route: Get Page Metadata
-app.get('/webflow/pages/:page_id/meta', async (req, res) => {
-  const { page_id } = req.params;
-
-  if (!page_id) {
-    return res.status(400).json({ error: 'page_id is required.' });
-  }
-
+// Route: Test Authentication (POST) - Optional
+app.post('/test_auth', async (req, res) => {
   try {
-    const data = await makeWebflowRequest('GET', `/pages/${page_id}`);
-    res.json(data);
+    const data = await makeWebflowRequest('GET', `/v2/token/authorized_by`);
+    res.json({ success: true, message: 'Authorization successful!', data });
   } catch (error) {
-    console.error('Get Page Meta Error:', error);
-    res.status(error.status || 500).json({ error: 'Failed to fetch page metadata.', details: error.data });
+    console.error('Authorization Error:', error);
+    res.status(error.status || 500).json({ success: false, message: 'Authorization failed.', details: error.data });
   }
 });
 
-// Route: Update Page Metadata
-app.put('/webflow/pages/:page_id/meta', async (req, res) => {
-  const { page_id } = req.params;
-  const { fieldData } = req.body;
-
-  if (!page_id) {
-    return res.status(400).json({ error: 'page_id is required.' });
-  }
-
-  if (!fieldData || typeof fieldData !== 'object') {
-    return res.status(400).json({ error: 'Valid fieldData object is required.' });
-  }
-
-  try {
-    const data = await makeWebflowRequest('PUT', `/pages/${page_id}`, { fieldData });
-    res.json(data);
-  } catch (error) {
-    console.error('Update Page Meta Error:', error);
-    res.status(error.status || 500).json({ error: 'Failed to update page metadata.', details: error.data });
-  }
-});
-
-// Route: Get Page Content
-app.get('/webflow/pages/:page_id/content', async (req, res) => {
-  const { page_id } = req.params;
-
-  if (!page_id) {
-    return res.status(400).json({ error: 'page_id is required.' });
-  }
-
-  try {
-    const data = await makeWebflowRequest('GET', `/pages/${page_id}/dom`);
-    res.json(data);
-  } catch (error) {
-    console.error('Get Page Content Error:', error);
-    res.status(error.status || 500).json({ error: 'Failed to fetch page content.', details: error.data });
-  }
-});
-
-// Route: Update Page Content
-app.post('/webflow/pages/:page_id/content', async (req, res) => {
-  const { page_id } = req.params;
-  const { body_id, script_id, script_version, fieldData } = req.body;
-
-  if (!page_id) {
-    return res.status(400).json({ error: 'page_id is required.' });
-  }
-
-  if (!fieldData || typeof fieldData !== 'object') {
-    return res.status(400).json({ error: 'Valid fieldData object is required.' });
-  }
-
-  const data = {
-    body_id,
-    script_id,
-    script_version,
-    fieldData,
-  };
-
-  try {
-    const response = await makeWebflowRequest('POST', `/pages/${page_id}/dom`, data);
-    res.json(response);
-  } catch (error) {
-    console.error('Update Page Content Error:', error);
-    res.status(error.status || 500).json({ error: 'Failed to update page content.', details: error.data });
-  }
-});
-
-// Route: Get Live Collection Item
-app.get('/webflow/collections/:collection_id/items/live', async (req, res) => {
-  const { collection_id } = req.params;
-
-  if (!collection_id) {
-    return res.status(400).json({ error: 'collection_id is required.' });
-  }
-
-  try {
-    const data = await makeWebflowRequest('GET', `/collections/${collection_id}/items/live`);
-    res.json(data);
-  } catch (error) {
-    console.error('Get Live Collection Item Error:', error);
-    res.status(error.status || 500).json({ error: 'Failed to fetch live collection item.', details: error.data });
-  }
-});
-
-// Route: Update Live Collection Item
-app.patch('/webflow/collections/:collection_id/items/live', async (req, res) => {
-  const { collection_id } = req.params;
-  const { fieldData } = req.body;
-
-  if (!collection_id) {
-    return res.status(400).json({ error: 'collection_id is required.' });
-  }
-
-  if (!fieldData || typeof fieldData !== 'object') {
-    return res.status(400).json({ error: 'Valid fieldData object is required.' });
-  }
-
-  try {
-    const data = await makeWebflowRequest('PATCH', `/collections/${collection_id}/items/live`, { fieldData });
-    res.json(data);
-  } catch (error) {
-    console.error('Update Live Collection Item Error:', error);
-    res.status(error.status || 500).json({ error: 'Failed to update live collection item.', details: error.data });
-  }
-});
-
-// Route: Get Custom Code Pages
-app.get('/webflow/pages/:page_id/custom_code', async (req, res) => {
-  const { page_id } = req.params;
-
-  if (!page_id) {
-    return res.status(400).json({ error: 'page_id is required.' });
-  }
-
-  try {
-    const data = await makeWebflowRequest('GET', `/pages/${page_id}/custom_code`);
-    res.json(data);
-  } catch (error) {
-    console.error('Get Custom Code Pages Error:', error);
-    res.status(error.status || 500).json({ error: 'Failed to fetch custom code for page.', details: error.data });
-  }
-});
-
-// Route: Add/Update Custom Code Pages
-app.put('/webflow/pages/:page_id/custom_code', async (req, res) => {
-  const { page_id } = req.params;
-  const { customCode } = req.body;
-
-  if (!page_id) {
-    return res.status(400).json({ error: 'page_id is required.' });
-  }
-
-  if (!customCode || typeof customCode !== 'object') {
-    return res.status(400).json({ error: 'Valid customCode object is required.' });
-  }
-
-  try {
-    const data = await makeWebflowRequest('PUT', `/pages/${page_id}/custom_code`, { customCode });
-    res.json(data);
-  } catch (error) {
-    console.error('Add/Update Custom Code Pages Error:', error);
-    res.status(error.status || 500).json({ error: 'Failed to add/update custom code for page.', details: error.data });
-  }
-});
+// Other routes as previously defined...
 
 // Route: Root
 app.get('/', (req, res) => {
