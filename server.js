@@ -1,96 +1,250 @@
 // server.js
-const express = require('express');
-const fetch = require('node-fetch');
-const cors = require('cors'); // Import CORS middleware
 require('dotenv').config(); // Load environment variables
+
+const express = require('express');
+const axios = require('axios'); // Import axios for HTTP requests
+const cors = require('cors'); // Import CORS middleware
 const app = express();
 
-// Use CORS middleware with specific origin
+// Extract environment variables
+const WEBFLOW_API_KEY = process.env.WEBFLOW_API_KEY;
+const SITE_ID = process.env.SITE_ID;
+
+// Validate essential environment variables
+if (!WEBFLOW_API_KEY || !SITE_ID) {
+  console.error('Error: Missing essential environment variables.');
+  process.exit(1); // Exit the application if required variables are missing
+}
+
+// Middleware to enable CORS for specified origin
 app.use(cors({
-  origin: 'https://www.sportdogfood.com', // Replace this with the domain you want to allow
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: 'https://www.sportdogfood.com', // Replace with your actual domain
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Middleware to parse JSON bodies
+// Middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Webflow API key from environment variables
-const WEBFLOW_API_KEY = process.env.WEBFLOW_API_KEY;
-
-// Webflow API endpoint on Heroku
-app.post('/webflow', async (req, res) => {
-  const { fieldData } = req.body;
-
+// Helper function to make authenticated requests to Webflow API
+const makeWebflowRequest = async (method, endpoint, data = null) => {
+  const url = `https://api.webflow.com${endpoint}`;
   const headers = {
     'accept': 'application/json',
     'authorization': `Bearer ${WEBFLOW_API_KEY}`,
-    'content-type': 'application/json'
-  };
-
-  const body = {
-    isArchived: false,
-    isDraft: false,
-    fieldData: {
-      name: fieldData.name
-      // Add other fields as needed
-    }
+    'content-type': 'application/json',
   };
 
   try {
-    const response = await fetch('https://api.webflow.com/v2/collections/6494e10f7a143f705f4db1d2/items', {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(body)
+    const response = await axios({
+      method,
+      url,
+      headers,
+      data,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Webflow API Error:', errorData);
-      return res.status(response.status).json({ error: 'Error sending data to Webflow API', details: errorData });
-    }
-
-    const data = await response.json();
-    console.log('Webflow API Response:', data);
-    res.json(data);
+    return response.data;
   } catch (error) {
-    console.error('Error sending data to Webflow API:', error);
-    res.status(500).json({ error: 'Error sending data to Webflow API' });
+    if (error.response) {
+      // Server responded with a status other than 2xx
+      throw {
+        status: error.response.status,
+        data: error.response.data,
+      };
+    } else {
+      // Other errors (network issues, etc.)
+      throw {
+        status: 500,
+        data: { message: 'Internal Server Error' },
+      };
+    }
   }
-});
+};
 
-// Updated test_auth route to verify Webflow API key
+// Route: Test Authentication
 app.post('/test_auth', async (req, res) => {
   try {
-    // Fetch sites to verify API key
-    const response = await fetch('https://api.webflow.com/sites', {
-      method: 'GET',
-      headers: {
-        'accept': 'application/json',
-        'authorization': `Bearer ${WEBFLOW_API_KEY}`,
-        'content-type': 'application/json'
-      }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      res.json({ success: true, message: 'Authorization successful!', data: data });
-    } else {
-      const errorData = await response.json();
-      res.status(response.status).json({ success: false, message: 'Authorization failed.', details: errorData });
-    }
+    const data = await makeWebflowRequest('GET', `/sites/${SITE_ID}`);
+    res.json({ success: true, message: 'Authorization successful!', data });
   } catch (error) {
-    console.error('Error during authentication test:', error);
-    res.status(500).json({ success: false, message: 'Error during authentication test.', details: error.message });
+    console.error('Authorization Error:', error);
+    res.status(error.status || 500).json({ success: false, message: 'Authorization failed.', details: error.data });
   }
 });
 
+// Route: Get Page Metadata
+app.get('/webflow/pages/:page_id/meta', async (req, res) => {
+  const { page_id } = req.params;
 
+  if (!page_id) {
+    return res.status(400).json({ error: 'page_id is required.' });
+  }
 
-// Root route
+  try {
+    const data = await makeWebflowRequest('GET', `/pages/${page_id}`);
+    res.json(data);
+  } catch (error) {
+    console.error('Get Page Meta Error:', error);
+    res.status(error.status || 500).json({ error: 'Failed to fetch page metadata.', details: error.data });
+  }
+});
+
+// Route: Update Page Metadata
+app.put('/webflow/pages/:page_id/meta', async (req, res) => {
+  const { page_id } = req.params;
+  const { fieldData } = req.body;
+
+  if (!page_id) {
+    return res.status(400).json({ error: 'page_id is required.' });
+  }
+
+  if (!fieldData || typeof fieldData !== 'object') {
+    return res.status(400).json({ error: 'Valid fieldData object is required.' });
+  }
+
+  try {
+    const data = await makeWebflowRequest('PUT', `/pages/${page_id}`, { fieldData });
+    res.json(data);
+  } catch (error) {
+    console.error('Update Page Meta Error:', error);
+    res.status(error.status || 500).json({ error: 'Failed to update page metadata.', details: error.data });
+  }
+});
+
+// Route: Get Page Content
+app.get('/webflow/pages/:page_id/content', async (req, res) => {
+  const { page_id } = req.params;
+
+  if (!page_id) {
+    return res.status(400).json({ error: 'page_id is required.' });
+  }
+
+  try {
+    const data = await makeWebflowRequest('GET', `/pages/${page_id}/dom`);
+    res.json(data);
+  } catch (error) {
+    console.error('Get Page Content Error:', error);
+    res.status(error.status || 500).json({ error: 'Failed to fetch page content.', details: error.data });
+  }
+});
+
+// Route: Update Page Content
+app.post('/webflow/pages/:page_id/content', async (req, res) => {
+  const { page_id } = req.params;
+  const { body_id, script_id, script_version, fieldData } = req.body;
+
+  if (!page_id) {
+    return res.status(400).json({ error: 'page_id is required.' });
+  }
+
+  if (!fieldData || typeof fieldData !== 'object') {
+    return res.status(400).json({ error: 'Valid fieldData object is required.' });
+  }
+
+  const data = {
+    body_id,
+    script_id,
+    script_version,
+    fieldData,
+  };
+
+  try {
+    const response = await makeWebflowRequest('POST', `/pages/${page_id}/dom`, data);
+    res.json(response);
+  } catch (error) {
+    console.error('Update Page Content Error:', error);
+    res.status(error.status || 500).json({ error: 'Failed to update page content.', details: error.data });
+  }
+});
+
+// Route: Get Live Collection Item
+app.get('/webflow/collections/:collection_id/items/live', async (req, res) => {
+  const { collection_id } = req.params;
+
+  if (!collection_id) {
+    return res.status(400).json({ error: 'collection_id is required.' });
+  }
+
+  try {
+    const data = await makeWebflowRequest('GET', `/collections/${collection_id}/items/live`);
+    res.json(data);
+  } catch (error) {
+    console.error('Get Live Collection Item Error:', error);
+    res.status(error.status || 500).json({ error: 'Failed to fetch live collection item.', details: error.data });
+  }
+});
+
+// Route: Update Live Collection Item
+app.patch('/webflow/collections/:collection_id/items/live', async (req, res) => {
+  const { collection_id } = req.params;
+  const { fieldData } = req.body;
+
+  if (!collection_id) {
+    return res.status(400).json({ error: 'collection_id is required.' });
+  }
+
+  if (!fieldData || typeof fieldData !== 'object') {
+    return res.status(400).json({ error: 'Valid fieldData object is required.' });
+  }
+
+  try {
+    const data = await makeWebflowRequest('PATCH', `/collections/${collection_id}/items/live`, { fieldData });
+    res.json(data);
+  } catch (error) {
+    console.error('Update Live Collection Item Error:', error);
+    res.status(error.status || 500).json({ error: 'Failed to update live collection item.', details: error.data });
+  }
+});
+
+// Route: Get Custom Code Pages
+app.get('/webflow/pages/:page_id/custom_code', async (req, res) => {
+  const { page_id } = req.params;
+
+  if (!page_id) {
+    return res.status(400).json({ error: 'page_id is required.' });
+  }
+
+  try {
+    const data = await makeWebflowRequest('GET', `/pages/${page_id}/custom_code`);
+    res.json(data);
+  } catch (error) {
+    console.error('Get Custom Code Pages Error:', error);
+    res.status(error.status || 500).json({ error: 'Failed to fetch custom code for page.', details: error.data });
+  }
+});
+
+// Route: Add/Update Custom Code Pages
+app.put('/webflow/pages/:page_id/custom_code', async (req, res) => {
+  const { page_id } = req.params;
+  const { customCode } = req.body;
+
+  if (!page_id) {
+    return res.status(400).json({ error: 'page_id is required.' });
+  }
+
+  if (!customCode || typeof customCode !== 'object') {
+    return res.status(400).json({ error: 'Valid customCode object is required.' });
+  }
+
+  try {
+    const data = await makeWebflowRequest('PUT', `/pages/${page_id}/custom_code`, { customCode });
+    res.json(data);
+  } catch (error) {
+    console.error('Add/Update Custom Code Pages Error:', error);
+    res.status(error.status || 500).json({ error: 'Failed to add/update custom code for page.', details: error.data });
+  }
+});
+
+// Route: Root
 app.get('/', (req, res) => {
   res.send('App is running.');
+});
+
+// Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled Error:', err.stack);
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 // Start the server
