@@ -60,8 +60,8 @@ app.post('/webflow', async (req, res) => {
   }
 });
 
-// Updated test_auth route to verify Webflow API key
-app.post('/test_auth', async (req, res) => {
+// Temporary GET route for testing authentication via browser
+app.get('/test_auth', async (req, res) => {
   try {
     // Example: Fetch collections to verify API key
     const response = await fetch('https://api.webflow.com/collections', {
@@ -85,6 +85,7 @@ app.post('/test_auth', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error during authentication test.', details: error.message });
   }
 });
+
 
 // Root route
 app.get('/', (req, res) => {
