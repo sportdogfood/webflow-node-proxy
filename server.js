@@ -20,7 +20,8 @@ app.post('/webflow', async (req, res) => {
 
   const headers = {
     'accept': 'application/json',
-    'authorization': 'Bearer 8c21ecbc5b6e67c61d84ca6f3798ecf88e2cb453f8fc0312945b29d45f1d873e',
+    //'authorization': 'Bearer 8c21ecbc5b6e67c61d84ca6f3798ecf88e2cb453f8fc0312945b29d45f1d873e',
+    'authorization': 'Bearer fc1966f1588bc96d62d63b7bc6f22efdb84054cf49faf1ade02a744b7581b0af',
     'content-type': 'application/json'
   };
 
