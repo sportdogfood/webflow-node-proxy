@@ -89,18 +89,44 @@ app.post('/test_auth', async (req, res) => {
   }
 });
 
-// Route: Get all items from a specific Webflow collection
 app.get('/cms/collection/items', async (req, res) => {
-  const collectionId = '64b01211660e83444d2586c1';
+  const collectionId = '647ddb9037101ce399b3310c';
 
   try {
-    const data = await makeWebflowRequest('GET', `/v2/collections/${collectionId}/items`);
-    res.json({ success: true, data });
+    const response = await makeWebflowRequest('GET', `/v2/collections/${collectionId}/items`);
+
+    // Extract and simplify the payload
+    const cleaned = response.items.map(item => {
+      const f = item.fieldData;
+      return {
+        id: item.id,
+        name: f.name,
+        display: f.display,
+        type: f.type,
+        company: f.company,
+        category: f.category,
+        description: f.description,
+        keywords: f.keywords,
+        link: f.linkto,
+        options: f.options,
+        opts_ids: f.opts,
+        slug: f.slug,
+        createdOn: item.createdOn,
+        lastUpdated: item.lastUpdated
+      };
+    });
+
+    res.json({ success: true, count: cleaned.length, items: cleaned });
   } catch (error) {
-    console.error('Error fetching collection items:', error);
-    res.status(error.status || 500).json({ success: false, message: 'Failed to fetch collection items.', details: error.data });
+    console.error('CMS Fetch Error:', error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: 'Failed to fetch CMS items.',
+      details: error.data
+    });
   }
 });
+
 
 // Other routes as previously defined...
 
