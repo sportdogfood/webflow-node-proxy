@@ -90,29 +90,33 @@ app.post('/test_auth', async (req, res) => {
 });
 
 app.get('/cms/collection/items', async (req, res) => {
-  const collectionId = '647ddb9037101ce399b3310c';
+  const collectionId = '64b01211660e83444d2586c1';
 
   try {
     const response = await makeWebflowRequest('GET', `/v2/collections/${collectionId}/items`);
 
-    // Extract and simplify the payload
     const cleaned = response.items.map(item => {
       const f = item.fieldData;
       return {
-        id: item.id,
         name: f.name,
-        display: f.display,
+        slug: f.slug,
+        collectionId: collectionId,
+        itemId: item.id,
+        createdOn: item.createdOn,
+        updatedOn: item.lastUpdated,
+        publishedOn: item.lastPublished,
         type: f.type,
+        display: f.display,
         company: f.company,
         category: f.category,
-        description: f.description,
-        keywords: f.keywords,
-        link: f.linkto,
         options: f.options,
-        opts_ids: f.opts,
-        slug: f.slug,
-        createdOn: item.createdOn,
-        lastUpdated: item.lastUpdated
+        description: f.description,
+        suggest: f.suggest,
+        linkto: f.linkto,
+        co: f.co,
+        expl: f.expl,
+        comp: f.comp,
+        acct: f.acct,
       };
     });
 
@@ -126,6 +130,7 @@ app.get('/cms/collection/items', async (req, res) => {
     });
   }
 });
+
 
 
 // Other routes as previously defined...
