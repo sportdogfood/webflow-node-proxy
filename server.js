@@ -89,6 +89,19 @@ app.post('/test_auth', async (req, res) => {
   }
 });
 
+// Route: Get all items from a specific Webflow collection
+app.get('/cms/collection/items', async (req, res) => {
+  const collectionId = '647ddb9037101ce399b3310c';
+
+  try {
+    const data = await makeWebflowRequest('GET', `/v2/collections/${collectionId}/items`);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching collection items:', error);
+    res.status(error.status || 500).json({ success: false, message: 'Failed to fetch collection items.', details: error.data });
+  }
+});
+
 // Other routes as previously defined...
 
 // Route: Root
