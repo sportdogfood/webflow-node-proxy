@@ -91,7 +91,7 @@ app.post('/test_auth', async (req, res) => {
 
 // Route: Get all items from a specific Webflow collection
 app.get('/cms/collection/items', async (req, res) => {
-  const collectionId = '647ddb9037101ce399b3310c';
+  const collectionId = '64b01211660e83444d2586c1';
 
   try {
     const data = await makeWebflowRequest('GET', `/v2/collections/${collectionId}/items`);
