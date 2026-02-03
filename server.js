@@ -131,59 +131,6 @@ app.get('/cms/collection/items', async (req, res) => {
   }
 });
 
-// 1) Add near the top (after SITE_ID env vars), alongside your other env reads:
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
-
-// optional: set this in .env, otherwise it will use your horses table id below
-const AIRTABLE_HORSES_TABLE = process.env.AIRTABLE_HORSES_TABLE || 'tblliyUZ1ZS88Kfvl';
-
-if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
-  console.error('Error: Missing AIRTABLE_API_KEY or AIRTABLE_BASE_ID.');
-  process.exit(1);
-}
-
-// 2) Update CORS to allow your Webflow preview origin
-app.use(cors({
-  origin: [
-    'https://www.sportdogfood.com',
-    'https://tackready.webflow.io',
-  ],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-
-// 3) Add this helper (similar to makeWebflowRequest)
-const makeAirtableRequest = async (method, path, params = null, data = null) => {
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${path}`;
-  const headers = {
-    Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json',
-  };
-
-  const config = { method, url, headers };
-  if (params) config.params = params;
-  if (data && !['GET', 'HEAD'].includes(method.toUpperCase())) config.data = data;
-
-  try {
-    const response = await axios(config);
-    return response.data;
-  } catch (error) {
-    if (error.response) throw { status: error.response.status, data: error.response.data };
-    throw { status: 500, data: { message: 'Internal Server Error' } };
-  }
-};
-
-// 4) Minimal TEST route (GET) to confirm CORS + Airtable auth works
-app.get('/airtable/ping', async (req, res) => {
-  try {
-    // fetch 1 record to prove Airtable access works
-    const data = await makeAirtableRequest('GET', AIRTABLE_HORSES_TABLE, { pageSize: 1 });
-    res.json({ success: true, message: 'Airtable OK', sample: data?.records?.[0] || null });
-  } catch (error) {
-    res.status(error.status || 500).json({ success: false, message: 'Airtable failed', details: error.data });
-  }
-});
 
 
 // Other routes as previously defined...
